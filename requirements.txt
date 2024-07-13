@@ -1,2 +1,3 @@
 # Core dependencies
-dotenv
+python-dotenv
+psycopg2-binary

@@ -1,9 +1,14 @@
 # Local environment
 .venv
 
+# Compiled Python files
+*.pyc
+__pycache__/
+
 # Shared folders
-shared/data
 shared/logs
+shared/docs/prompts
+shared/tmp
 
 # Private keys
 .env
