@@ -1,0 +1,9 @@
+# Local environment
+.venv
+
+# Shared folders
+shared/data
+shared/logs
+
+# Private keys
+.env
