@@ -3,15 +3,15 @@ from loguru import logger
 import sys
 import os
 
-# Add the parent directory of `scraper` to sys.path
+# Add the shared directory to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
+sys.path.append(os.path.join(parent_dir, "shared"))
 
 from scraper import Scraper, download_page_images
 
 def main():
-    parser = argparse.ArgumentParser(description="Web scraper for automotive blog")
+    parser = argparse.ArgumentParser(description="Web scraper for https://www.autoblog.com.uy")
     parser.add_argument(
         "-o", "--options",
         nargs="+",
@@ -23,7 +23,7 @@ def main():
         "-n", "--numpages",
         type=int,
         default=0,
-        help="Number of pages to scrape (0 for all available)"
+        help="Number of pages to scrape (0 for all available up to the max date)"
     )
     parser.add_argument(
         "--log-level",

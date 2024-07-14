@@ -15,14 +15,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from loguru import logger
 
-from shared.utils import DBHelper
+from utils import DBHelper
 
 # Configure loguru
 logger.add("logs/scraper.log", rotation="10 MB", level="INFO")
 
 class ScraperConfig:
     LOCALE = 'es_ES.UTF-8'
-    MAX_POST_AGE = 30  # Maximum age of posts to scrape in days
+    MAX_POST_AGE = 1500  # Maximum age of posts to scrape in days
     URLS = {
         "PRICES": "https://www.autoblog.com.uy/p/precios-0km.html",
         "SALES": "https://www.autoblog.com.uy/search/label/Ventas?max-results=20&by-date=false",
