@@ -1,12 +1,11 @@
 from shared.lib.llm_usage import LLMUsage
-
-from parsers import PriceParser, PostsParser
 from lib.processor_result import ProcessorResult
     
 
 class Processor:
     
     def _parse(self, entities):
+        from parsers import PriceParser, PostsParser, SalesParser
         results = ProcessorResult(action="parse", entity="")
         
         if "prices" in entities:
@@ -20,6 +19,10 @@ class Processor:
         if "launches" in entities:
             parser = PostsParser()
             results.append_result(parser.parse(entities="launches"))
+            
+        if "sales" in entities:
+            parser = SalesParser()
+            results.append_result(parser.parse())
             
         return results
             

@@ -51,6 +51,19 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true
         },{
+            "name": "Processor - Full action (Interactive)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/processor/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-a", "${input:processorActions}",
+                "--log-level", "INFO"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },{
             "name": "Processor - INIT DB",
             "type": "debugpy",
             "request": "launch",

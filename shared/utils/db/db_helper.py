@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from contextlib import contextmanager
 import threading
 
@@ -15,7 +15,7 @@ class DBHelper:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(DBHelper, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._initialize()
         return cls._instance
 
@@ -24,35 +24,18 @@ class DBHelper:
         self._create_connection_pool()
 
     def _create_connection_pool(self):
-        dbname = os.getenv('DB_NAME')
-        user = os.getenv('DB_USER')
-        password = os.getenv('DB_PASSWORD')
-        host = os.getenv('DB_HOST')
-        port = os.getenv('DB_PORT')
-
-        self._pool = ThreadedConnectionPool(
-            minconn=1,
-            maxconn=20,  # Increased max connections
-            dbname=dbname,
-            user=user,
-            password=password,
-            host=host,
-            port=port
-        )
-
-    def _get_conn(self):
-        if not hasattr(self._local, 'conn'):
-            self._local.conn = self._pool.getconn()
-        return self._local.conn
-
-    def _put_conn(self):
-        if hasattr(self._local, 'conn'):
-            self._pool.putconn(self._local.conn)
-            del self._local.conn
+        config = {
+            'dbname': os.getenv('DB_NAME'),
+            'user': os.getenv('DB_USER'),
+            'password': os.getenv('DB_PASSWORD'),
+            'host': os.getenv('DB_HOST'),
+            'port': os.getenv('DB_PORT')
+        }
+        self._pool = ThreadedConnectionPool(minconn=1, maxconn=20, **config)
 
     @contextmanager
     def get_cursor(self):
-        conn = self._get_conn()
+        conn = self._pool.getconn()
         try:
             with conn.cursor() as cur:
                 yield cur
@@ -61,75 +44,76 @@ class DBHelper:
             conn.rollback()
             raise
         finally:
-            self._put_conn()
+            self._pool.putconn(conn)
 
-    def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
+    def execute_query(self, query: Union[str, sql.Composed], params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         with self.get_cursor() as cur:
-            if params:
-                # Convert None values to SQL NULL
-                params = tuple(psycopg2.extensions.AsIs('NULL') if p is None else p for p in params)
             cur.execute(query, params)
             if cur.description:
                 columns = [col.name for col in cur.description]
                 return [dict(zip(columns, row)) for row in cur.fetchall()]
         return []
 
-    def select_by_id(self, table_name: str, id: int) -> Optional[Dict[str, Any]]:
-        query = sql.SQL("SELECT * FROM {} WHERE id = %s").format(sql.Identifier(table_name))
-        results = self.execute_query(query.as_string(self._get_conn()), (id,))
-        return results[0] if results else None
+    def _build_conditions(self, attributes: Dict[str, Any]) -> sql.Composed:
+        return sql.SQL(' AND ').join(
+            sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder())
+            for k in attributes
+        )
 
     def select_by_attributes(self, table_name: str, attributes: Dict[str, Any]) -> List[Dict[str, Any]]:
-        placeholders = sql.SQL(', ').join(sql.SQL('{}').format(sql.Placeholder()) * len(attributes))
-        columns = sql.SQL(', ').join(map(sql.Identifier, attributes.keys()))
-        query = sql.SQL("SELECT * FROM {} WHERE ({}) = ({})").format(
+        query = sql.SQL("SELECT * FROM {} WHERE {}").format(
             sql.Identifier(table_name),
-            columns,
-            placeholders
+            self._build_conditions(attributes)
         )
-        return self.execute_query(query.as_string(self._get_conn()), tuple(attributes.values()))
+        return self.execute_query(query, tuple(attributes.values()))
 
-    def exists(self, table_name: str, attributes: Dict[str, Any]) -> bool:
-        placeholders = sql.SQL(', ').join(sql.Placeholder() * len(attributes))
-        columns = sql.SQL(', ').join(map(sql.Identifier, attributes.keys()))
-        query = sql.SQL("SELECT EXISTS(SELECT 1 FROM {} WHERE ({}) = ({}))").format(
+    def select_by_id(self, table_name: str, primary_key: Union[str, int, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        attributes = self._prepare_primary_key(primary_key)
+        results = self.select_by_attributes(table_name, attributes)
+        return results[0] if results else None
+
+    def exists(self, table_name: str, attributes: Union[str, int, Dict[str, Any]]) -> bool:
+        attributes = self._prepare_primary_key(attributes)
+        query = sql.SQL("SELECT EXISTS(SELECT 1 FROM {} WHERE {})").format(
             sql.Identifier(table_name),
-            columns,
-            placeholders
+            self._build_conditions(attributes)
         )
-        result = self.execute_query(query.as_string(self._get_conn()), tuple(attributes.values()))
+        result = self.execute_query(query, tuple(attributes.values()))
         return result[0]['exists'] if result else False
 
-    def insert(self, table_name: str, data: Dict[str, Any]) -> Optional[int]:
+    def insert(self, table_name: str, data: Dict[str, Any]) -> Union[str, int, Dict[str, Any]]:
         columns = sql.SQL(', ').join(map(sql.Identifier, data.keys()))
-        placeholders = sql.SQL(', ').join(sql.SQL('{}').format(sql.Placeholder()) * len(data))
-        query = sql.SQL("INSERT INTO {} ({}) VALUES ({}) RETURNING id").format(
-            sql.Identifier(table_name),
-            columns,
-            placeholders
+        placeholders = sql.SQL(', ').join(sql.Placeholder() * len(data))
+        query = sql.SQL("INSERT INTO {} ({}) VALUES ({}) RETURNING *").format(
+            sql.Identifier(table_name), columns, placeholders
         )
-        result = self.execute_query(query.as_string(self._get_conn()), tuple(data.values()))
-        return result[0]['id'] if result else None
+        result = self.execute_query(query, tuple(data.values()))
+        return result[0].get('id', result[0]) if result else None
 
-    def update(self, table_name: str, id: int, data: Dict[str, Any]) -> None:
+    def update(self, table_name: str, primary_key: Union[str, int, Dict[str, Any]], data: Dict[str, Any]) -> None:
+        primary_key = self._prepare_primary_key(primary_key)
         set_items = sql.SQL(', ').join(
             sql.SQL("{} = {}").format(sql.Identifier(k), sql.Placeholder())
-            for k in data.keys()
+            for k in data
         )
-        query = sql.SQL("UPDATE {} SET {} WHERE id = {}").format(
+        query = sql.SQL("UPDATE {} SET {} WHERE {}").format(
             sql.Identifier(table_name),
             set_items,
-            sql.Placeholder()
+            self._build_conditions(primary_key)
         )
-        self.execute_query(query.as_string(self._get_conn()), tuple(data.values()) + (id,))
+        self.execute_query(query, tuple(data.values()) + tuple(primary_key.values()))
 
     def initialize_database(self, schema_path: str) -> None:
+        with open(schema_path, 'r') as schema_file:
+            schema_sql = schema_file.read()
         try:
-            with open(schema_path, 'r') as schema_file:
-                schema_sql = schema_file.read()
             self.execute_query(schema_sql)
         except psycopg2.errors.DuplicateTable:
             raise Exception("Database already initialized")
+
+    @staticmethod
+    def _prepare_primary_key(primary_key: Union[str, int, Dict[str, Any]]) -> Dict[str, Any]:
+        return {'id': primary_key} if isinstance(primary_key, (str, int)) else primary_key
 
     def __del__(self):
         if self._pool:
