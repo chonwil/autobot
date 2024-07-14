@@ -69,7 +69,6 @@ CREATE TABLE "articles" (
   "sentiment_emotions" TEXT,
   "comments_sentiment" VARCHAR(50),
   "comments_summary" TEXT,
-  "date_parsed" TIMESTAMP,
   "date_processed" TIMESTAMP,
   FOREIGN KEY ("post_id") REFERENCES "posts" ("id")
 );
@@ -88,7 +87,6 @@ CREATE TABLE "article_sections" (
   "sentiment_score" REAL,
   "sentiment_evidence" TEXT,
   "sentiment_emotions" TEXT,
-  "date_parsed" TIMESTAMP,
   "date_processed" TIMESTAMP,
   FOREIGN KEY ("article_id") REFERENCES "articles" ("id")
 );
@@ -100,7 +98,7 @@ CREATE TABLE "article_sections" (
 CREATE TABLE "car_models" (
   "id" SERIAL PRIMARY KEY,
   "make" VARCHAR(255),
-  "model" VARCHAR(255),
+  "model" VARCHAR(255)
 );
 
 --
@@ -279,7 +277,8 @@ CREATE TABLE "similar_cars" (
 
 CREATE TABLE "similar_launches" (
   "id" SERIAL PRIMARY KEY,
-  "launch_id" INTEGER,
+  "launch_id" INTEGER NOT NULL,
+  "full_model_name" VARCHAR(255),
   "url" TEXT,
   FOREIGN KEY ("launch_id") REFERENCES "launches" ("id")
 );

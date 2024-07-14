@@ -65,6 +65,9 @@ class DBHelper:
 
     def execute_query(self, query: str, params: Optional[tuple] = None) -> List[Dict[str, Any]]:
         with self.get_cursor() as cur:
+            if params:
+                # Convert None values to SQL NULL
+                params = tuple(psycopg2.extensions.AsIs('NULL') if p is None else p for p in params)
             cur.execute(query, params)
             if cur.description:
                 columns = [col.name for col in cur.description]
@@ -77,7 +80,7 @@ class DBHelper:
         return results[0] if results else None
 
     def select_by_attributes(self, table_name: str, attributes: Dict[str, Any]) -> List[Dict[str, Any]]:
-        placeholders = sql.SQL(', ').join(sql.Placeholder() * len(attributes))
+        placeholders = sql.SQL(', ').join(sql.SQL('{}').format(sql.Placeholder()) * len(attributes))
         columns = sql.SQL(', ').join(map(sql.Identifier, attributes.keys()))
         query = sql.SQL("SELECT * FROM {} WHERE ({}) = ({})").format(
             sql.Identifier(table_name),
@@ -99,7 +102,7 @@ class DBHelper:
 
     def insert(self, table_name: str, data: Dict[str, Any]) -> Optional[int]:
         columns = sql.SQL(', ').join(map(sql.Identifier, data.keys()))
-        placeholders = sql.SQL(', ').join(sql.Placeholder() * len(data))
+        placeholders = sql.SQL(', ').join(sql.SQL('{}').format(sql.Placeholder()) * len(data))
         query = sql.SQL("INSERT INTO {} ({}) VALUES ({}) RETURNING id").format(
             sql.Identifier(table_name),
             columns,

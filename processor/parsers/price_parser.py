@@ -26,15 +26,14 @@ class PriceParser:
         cars = []
         soup = BeautifulSoup(html_content, 'html.parser')
         for li in soup.find_all("li"):
-            try:
-                car_url = li.find("a")["href"]
-                b = li.find("b").text
-                a = li.find("a").text if li.find("a") else None
-                car_name = li.find("a").text
-                car_price = ''.join(filter(str.isdigit, li.text.split("-")[-1].strip()))
-                cars.append({"name": car_name, "launch_url": car_url, "price": car_price})
-            except Exception as e:
-                logger.error(f"An error occurred: {str(e)} in {li.text}")
+            if (li.find("a")):
+                try:
+                    car_url = li.find("a")["href"]
+                    car_name = li.find("a").text
+                    car_price = ''.join(filter(str.isdigit, li.text.split("-")[-1].strip()))
+                    cars.append({"name": car_name, "launch_url": car_url, "price": car_price})
+                except Exception as e:
+                    logger.error(f"An error occurred: {str(e)} in {li.text}")
         return cars
 
     def _store_prices(self, cars):
