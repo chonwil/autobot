@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS "comment_sentiments";
 DROP TABLE IF EXISTS "car_articles";
 DROP TABLE IF EXISTS "car_prices";
 DROP TABLE IF EXISTS "cars";
+DROP TABLE IF EXISTS "car_models";
 DROP TABLE IF EXISTS "article_sections";
 DROP TABLE IF EXISTS "articles";
 DROP TABLE IF EXISTS "launches";
@@ -43,10 +44,9 @@ CREATE TABLE "posts" (
 CREATE TABLE "launches" (
   "id" SERIAL PRIMARY KEY,
   "post_id" INTEGER,
+  "car_model_id" INTEGER,
   "title" VARCHAR(255),
   "content" TEXT,
-  "json_output" TEXT,
-  "date_parsed" TIMESTAMP,
   "date_processed" TIMESTAMP,
   FOREIGN KEY ("post_id") REFERENCES "posts" ("id")
 );
@@ -97,14 +97,25 @@ CREATE TABLE "article_sections" (
 -- Table structure for table "cars"
 --
 
+CREATE TABLE "car_models" (
+  "id" SERIAL PRIMARY KEY,
+  "make" VARCHAR(255),
+  "model" VARCHAR(255),
+);
+
+--
+-- Table structure for table "cars"
+--
+
 CREATE TABLE "cars" (
   "id" SERIAL PRIMARY KEY,
   "launch_id" INTEGER NOT NULL,
   "launch_price" INTEGER,
+  "current_price" INTEGER,
+  "price_date" TIMESTAMP,
   "seller_name" VARCHAR(255),
-  "make" VARCHAR(255),
-  "model" VARCHAR(255),
   "variant" VARCHAR(255),
+  "full_model_name" VARCHAR(255),
   "body_type" VARCHAR(50),
   "origin_country" VARCHAR(100),
   "engine_type" VARCHAR(50),
@@ -165,8 +176,6 @@ CREATE TABLE "cars" (
   "features_num_speakers" INTEGER,
   "warranty_years" INTEGER,
   "warranty_kms" INTEGER,
-  "current_price" INTEGER,
-  "price_date" TIMESTAMP,
   FOREIGN KEY ("launch_id") REFERENCES "launches" ("id")
 );
 
@@ -178,8 +187,7 @@ CREATE TABLE "car_prices" (
   "id" SERIAL PRIMARY KEY,
   "launch_url" TEXT NOT NULL,
   "name" VARCHAR(255) NOT NULL,
-  "price" DECIMAL(10,2),
-  "date_parsed" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  "price" INTEGER,
   "date_processed" TIMESTAMP,
   "process_result" VARCHAR(50)
 );

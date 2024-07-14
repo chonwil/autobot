@@ -36,6 +36,20 @@
             "env": {},
             "cwd": "${workspaceFolder}",
             "justMyCode": true
+        },{
+            "name": "Processor (Interactive)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/processor/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-a", "${input:processorActions}",
+                "-o", "${input:processorOptions}",
+                "--log-level", "INFO"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
         }
     ],
     "inputs": [
@@ -51,6 +65,30 @@
                 "trials"
             ],
             "default": "prices"
+        },
+        {
+            "id": "processorOptions",
+            "type": "pickString",
+            "description": "Select the type of entity to process",
+            "options": [
+                "prices",
+                "sales",
+                "launches",
+                "articles"
+            ],
+            "default": "prices"
+        },
+        {
+            "id": "processorActions",
+            "type": "pickString",
+            "description": "Select the action to perform",
+            "options": [
+                "parse",
+                "process",
+                "connect",
+                "upload"
+            ],
+            "default": "parse"
         },
         {
             "id": "numPages",
