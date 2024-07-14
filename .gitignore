@@ -1,14 +1,19 @@
 # Local environment
 .venv
+.DS_Store
+.vscode/settings.json
 
 # Compiled Python files
 *.pyc
 __pycache__/
 
+# Logs
+*logs/
+
 # Shared folders
-shared/logs
 shared/docs/prompts
 shared/tmp
+shared/data/images
 
 # Private keys
 .env

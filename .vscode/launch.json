@@ -10,6 +10,53 @@
             "request": "launch",
             "program": "shared/run_tests.py",
             "console": "integratedTerminal"
+        },{
+            "name": "Scraper (Interactive)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scraper/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-o", "${input:scraperOptions}",
+                "-n", "${input:numPages}",
+                "--log-level", "INFO"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },{
+            "name": "Scraper - ALL",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scraper/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--log-level", "INFO"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        }
+    ],
+    "inputs": [
+        {
+            "id": "scraperOptions",
+            "type": "pickString",
+            "description": "Select scraper options",
+            "options": [
+                "prices",
+                "sales",
+                "launches",
+                "contacts",
+                "trials"
+            ],
+            "default": "prices"
+        },
+        {
+            "id": "numPages",
+            "type": "promptString",
+            "description": "Enter number of pages to scrape (0 for all)",
+            "default": "1"
         }
     ]
 }

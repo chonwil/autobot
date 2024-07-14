@@ -1,3 +1,11 @@
 # Core dependencies
 python-dotenv
 psycopg2-binary
+loguru
+
+
+# Scraper dependencies
+selenium
+webdriver-manager
+requests
+bs4
