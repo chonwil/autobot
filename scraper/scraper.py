@@ -17,8 +17,6 @@ from loguru import logger
 
 from utils import DBHelper
 
-# Configure loguru
-logger.add("logs/scraper.log", rotation="10 MB", level="INFO")
 
 class ScraperConfig:
     LOCALE = 'es_ES.UTF-8'

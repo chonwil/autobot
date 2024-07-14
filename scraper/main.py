@@ -1,14 +1,24 @@
 import argparse
 from loguru import logger
+from datetime import datetime
 import sys
 import os
 
 # Add the shared directory to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.append(os.path.join(parent_dir, "shared"))
+shared_dir = os.path.join(parent_dir, "shared")
+sys.path.append(shared_dir)
 
 from scraper import Scraper, download_page_images
+
+def initiate_logs(log_level = "INFO"):
+    # Configure loguru
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_file_name = f"{shared_dir}/logs/{current_time}_scraper.log"
+    logger.remove()  # Remove default handler
+    logger.add(sys.stderr, level=log_level)
+    logger.add(log_file_name, rotation="10 MB", level=log_level)
 
 def main():
     parser = argparse.ArgumentParser(description="Web scraper for https://www.autoblog.com.uy")
@@ -40,9 +50,7 @@ def main():
     args = parser.parse_args()
     
     # Configure logging
-    logger.remove()  # Remove default handler
-    logger.add(sys.stderr, level=args.log_level)
-    logger.add("logs/scraper.log", rotation="10 MB", level=args.log_level)
+    initiate_logs(args.log_level)
 
     logger.info(f"Starting scraper with options: {args.options}, numpages: {args.numpages}")
     
