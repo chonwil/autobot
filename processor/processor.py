@@ -1,7 +1,6 @@
 from shared.lib.llm_usage import LLMUsage
 from lib.processor_result import ProcessorResult
     
-
 class Processor:
     
     def _parse(self, entities):
@@ -28,7 +27,15 @@ class Processor:
             
 
     def _process(self, entities):
-        pass
+        from processors import SalesProcessor
+        results = ProcessorResult(action="process", entity="")
+        
+        if "sales" in entities:
+            processor = SalesProcessor()
+            results.append_result(processor.process())
+            
+        return results
+        
     
     def _connect(self, entities):
         pass
@@ -42,11 +49,12 @@ class Processor:
             result.append_result(self._parse(entities))
             
         if "process" in actions:
-            result.append_result(self._parse(entities))
+            result.append_result(self._process(entities))
             
         if "connect" in actions:
-            result.append_result(self._parse(entities))
+            result.append_result(self._connect(entities))
             
         if "upload" in actions:
-            result.append_result(self._parse(entities))
-
+            result.append_result(self._upload(entities))
+            
+        return result
