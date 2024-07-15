@@ -9,3 +9,9 @@ selenium
 webdriver-manager
 requests
 bs4
+
+# Processor dependencies
+langchain
+langchain-groq
+langchain-openai
+langchain-anthropic

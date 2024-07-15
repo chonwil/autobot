@@ -75,6 +75,15 @@
             "env": {},
             "cwd": "${workspaceFolder}",
             "justMyCode": true
+        },{
+            "name": "Processor - TEST LAUNCH MODELS",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/processor/model_performance_tester.py",
+            "console": "integratedTerminal",
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
         }
     ],
     "inputs": [

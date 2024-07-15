@@ -14,6 +14,7 @@ __pycache__/
 shared/docs/prompts
 shared/tmp
 shared/data/images
+shared/data/evaluations
 
 # Private keys
 .env
