@@ -14,7 +14,7 @@ sys.path.append(parent_dir)
 def initiate_logs(log_level = "INFO"):
     # Configure loguru
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_name = f"{shared_dir}/logs/{current_time}_scraper.log"
+    log_file_name = f"{shared_dir}/logs/{current_time}_processor.log"
     logger.remove()  # Remove default handler
     logger.add(sys.stderr, level=log_level)
     logger.add(log_file_name, rotation="10 MB", level=log_level)
@@ -85,10 +85,13 @@ def main():
             logger.info("Database initialization canceled by the user.")
         return
 
-    from processor import Processor, ProcessorResult
+    from processor import Processor
+    from lib.processor_result import ProcessorResult
     
     processor = Processor()
     result = processor.process(actions=args.actions, entities=args.options)
+    
+    logger.success("Processor finished. {} items processed.", result.items_processed)
     
 
 if __name__ == "__main__":

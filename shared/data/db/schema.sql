@@ -252,10 +252,10 @@ CREATE TABLE "sales_reports" (
 
 CREATE TABLE "car_sales" (
   "sales_report_id" INTEGER NOT NULL,
-  "car_id" INTEGER NOT NULL,
+  "car_model_id" INTEGER NOT NULL,
   "units" INTEGER,
-  PRIMARY KEY ("car_id", "sales_report_id"),
-  FOREIGN KEY ("car_id") REFERENCES "cars" ("id"),
+  PRIMARY KEY ("car_model_id", "sales_report_id"),
+  FOREIGN KEY ("car_model_id") REFERENCES "car_models" ("id"),
   FOREIGN KEY ("sales_report_id") REFERENCES "sales_reports" ("id")
 );
 

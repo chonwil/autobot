@@ -13,7 +13,7 @@ class PriceParser:
 
         if not prices_page:
             logger.info("No prices to parse. Skipping...")
-            return 0
+            return result
 
         cars = self._extract_car_prices(prices_page[0]["html_content"])
         result.items_processed = self._store_prices(cars)
