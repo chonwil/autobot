@@ -1,4 +1,5 @@
 import concurrent.futures
+import json
 import time
 import threading
 from typing import Dict, Any, List, Optional, Tuple
@@ -153,9 +154,7 @@ class LaunchProcessor:
                 usage.cost = cb.total_cost
             else:
                 car_attributes = self._extract_car_attributes(launch['content'], llm)
-                # Estimate token usage and cost for non-OpenAI models
-                usage.token_input, usage.token_output = self._estimate_token_usage(launch['content'], car_attributes)
-                usage.cost = self._estimate_cost(company_name, model_name, usage.token_input, usage.token_output)
+                usage.set_estimated_token_usage_and_cost(company_name, model_name, launch['content'], json.dumps(car_attributes))
             
             if car_attributes.cars:
                 for car in car_attributes.cars:
@@ -236,22 +235,3 @@ class LaunchProcessor:
 
     def _mark_launch_as_processed(self, launch_id: int):
         self.db.update('launches', {'id': launch_id}, {'date_processed': 'NOW()'})
-
-    def _estimate_token_usage(self, input_text: str, output: Cars) -> Tuple[int, int]:
-        # Implement token estimation logic here for non-OpenAI models
-        # This is a placeholder implementation
-        input_tokens = len(input_text.split())
-        output_tokens = sum(len(str(car).split()) for car in output.cars)
-        return input_tokens, output_tokens
-
-    def _estimate_cost(self, company_name: str, model_name: str, token_input: int, token_output: int) -> float:
-        # Implement cost estimation logic here for non-OpenAI models
-        # This is a placeholder implementation
-        if company_name == "groq":
-            # Add Groq pricing logic
-            pass
-        elif company_name == "anthropic":
-            # Add Anthropic pricing logic
-            pass
-        # Add more pricing logic for other models/companies
-        return 0.0

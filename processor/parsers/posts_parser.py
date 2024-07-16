@@ -4,10 +4,11 @@ from bs4 import BeautifulSoup, Tag
 from datetime import datetime
 from loguru import logger
 import html
+import re
 
 VALID_SECTION_TITLES = [
     "EXTERIOR", "INTERIOR", "MOTOR", "SEGURIDAD", "EQUIPAMIENTO", "PRECIO", "FICHA TÉCNICA",
-    "MOTORES, BATERÍA Y TRANSMISIÓN", "A favor", "En contra", "CONCLUSIÓN", "COMPETIDORES"
+    "MOTORES, BATERÍA Y TRANSMISIÓN", "A FAVOR", "EN CONTRA", "CONCLUSIÓN", "COMPETIDORES"
 ]
 
 class PostsParser:
@@ -16,7 +17,7 @@ class PostsParser:
         result = ProcessorResult(action="parse", entity=entities)
         
         if entities == "articles":
-            posts = db.execute_query("SELECT * FROM posts WHERE type = 'contact' or type='trial' AND date_parsed IS NULL")
+            posts = db.execute_query("SELECT * FROM posts WHERE (type = 'contact' or type='trial') AND date_parsed IS NULL")
         elif entities == "launches":
             posts = db.execute_query("SELECT * FROM posts WHERE type = 'launch' AND date_parsed IS NULL")
         
@@ -33,11 +34,14 @@ class PostsParser:
         text_content = html.unescape(soup.get_text(separator=' ', strip=True))
         article = {
             "post_id": post["id"],
-            "title": post["title"],
+            "title": post["title"].replace(" : Autoblog Uruguay | Autoblog.com.uy", "").strip(),
             "content": text_content
         }
         if entities == "articles":
             article["type"] = post["type"]
+            comments_soup = BeautifulSoup(post["html_comments"], 'html.parser')
+            text_comments = html.unescape(comments_soup.get_text(separator=' ', strip=True))
+            article["comments"] = text_comments
             article_id = db.insert("articles", article)
             sections = self._parse_sections(soup)
             self._store_sections(sections, article_id)
@@ -52,36 +56,46 @@ class PostsParser:
         return True
     
     def _parse_sections(self, soup: BeautifulSoup):
+        for div in soup.find_all('div'):
+            div.insert_before(soup.new_string('\n'))
+        text_content = soup.get_text(separator='\n', strip=True)
+
         sections = []
-        current_section_title = "INTRODUCCIÓN"
-        current_section_content = []
-        last_added_to_content = ""
+        current_section = None
+        
+        # Split the text into lines and process each line
+        lines = text_content.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
 
-        for element in soup.find_all():
-            if element.name == 'div' and element.find('span', {'style': 'font-size: large;'}):
-                potential_title = element.get_text(strip=True)
-                # Check if the potential title is a valid section title, if so, start a new section
-                if potential_title in VALID_SECTION_TITLES:
-                    if current_section_content:
-                        sections.append({
-                            'title': current_section_title,
-                            'content': ' '.join(current_section_content).strip()
-                        })
-                        current_section_content = []
-                        last_added_to_content = potential_title
-                    current_section_title = potential_title
-            else:
-                text = element.get_text(separator=' ', strip=True).replace('\xa0', ' ')
-                if text and text != last_added_to_content:
-                    current_section_content.append(text)
-                    last_added_to_content = text
+            # Check if the line matches any keyword
+            matching_keyword = next((kw for kw in VALID_SECTION_TITLES if (kw.lower() == line.lower().strip()) or ((kw.lower() +":") == line.lower().strip()) ), None)
 
-        if current_section_content:
-            sections.append({
-                'title': current_section_title,
-                'content': ' '.join(current_section_content).strip()
-            })
+            if matching_keyword:
+                # If we find a new section, save the previous one (if exists) and start a new one
+                if current_section:
+                    sections.append(current_section)
+                # Stop at the "FICHA TÉCNICA" section
+                if matching_keyword == "FICHA TÉCNICA":
+                    current_section = None
+                    break
+                current_section = {"title": matching_keyword, "content": ""}
+            elif current_section:
+                # If we're in a section, append the line to its content
+                current_section["content"] += line + " "
+
+        # Add the last section if it exists
+        if current_section:
+            sections.append(current_section)
+
+        # Clean up the content: remove extra whitespace
+        for section in sections:
+            section["content"] = re.sub(r'\s+', ' ', section["content"]).strip()
+
         return sections
+
             
     def _get_similar_launches(self, soup: BeautifulSoup):
         similar_launches = []

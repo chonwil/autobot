@@ -62,13 +62,13 @@ CREATE TABLE "articles" (
   "title" VARCHAR(255),
   "type" VARCHAR(50),
   "content" TEXT,
+  "comments" TEXT,
   "summary" TEXT,
-  "sentiment" VARCHAR(50),
   "sentiment_score" REAL,
   "sentiment_evidence" TEXT,
   "sentiment_emotions" TEXT,
-  "comments_sentiment" VARCHAR(50),
   "comments_summary" TEXT,
+  "comments_sentiment_score" REAL,
   "date_processed" TIMESTAMP,
   FOREIGN KEY ("post_id") REFERENCES "posts" ("id")
 );
@@ -83,7 +83,6 @@ CREATE TABLE "article_sections" (
   "title" VARCHAR(255),
   "content" TEXT,
   "summary" TEXT,
-  "sentiment" VARCHAR(50),
   "sentiment_score" REAL,
   "sentiment_evidence" TEXT,
   "sentiment_emotions" TEXT,

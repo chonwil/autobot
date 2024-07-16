@@ -41,7 +41,13 @@ class Processor:
             processor_result = processor.process(num_launches=num_items)
             logger.info(processor_result.llm_usage.print_summary_per_model())
             results.append_result(processor_result)
-            
+        
+        if "articles" in entities:
+            from processors import ArticlesProcessor
+            processor = ArticlesProcessor()
+            processor_result = processor.process(num_articles=num_items)
+            logger.info(processor_result.llm_usage.print_summary_per_model_action())
+            results.append_result(processor_result)
         return results
         
     

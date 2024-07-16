@@ -62,3 +62,18 @@ class LLMUsage:
             token_input, token_output, cost, time, count_calls = self.summarize(model_name=model)
             result.append(f"TOTAL: Token input: {token_input}, Token output: {token_output}, Cost: ${cost:.3f}, Time: {time:.2f}s, Calls: {count_calls}")
         return "\n".join(result)
+    
+    def set_estimated_token_usage_and_cost(self, company_name: str, model_name: str, input_text: str, output_text: str):
+        self.token_input = len(input_text.split())
+        self.token_output = len(output_text.split())
+        # Implement cost estimation logic here for non-OpenAI models
+        # This is a placeholder implementation
+        if company_name == "groq":
+            # Add Groq pricing logic
+            pass
+        elif company_name == "anthropic":
+            # Add Anthropic pricing logic
+            pass
+        # Add more pricing logic for other models/companies
+        
+    

@@ -16,3 +16,4 @@ langchain-groq
 langchain-openai
 langchain-anthropic
 langchain_community
+tiktoken
