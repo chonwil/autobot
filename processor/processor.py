@@ -52,7 +52,14 @@ class Processor:
         
     
     def _connect(self, entities):
-        pass
+        results = ProcessorResult(action="connect", entity="")
+    
+        if "launches" in entities:
+            from connectors import LaunchesConnector
+            connector = LaunchesConnector()
+            results.append_result(connector.connect())
+        
+        return results
     
     def _upload(self, entities):
         pass

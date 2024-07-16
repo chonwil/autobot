@@ -17,3 +17,5 @@ langchain-openai
 langchain-anthropic
 langchain_community
 tiktoken
+fuzzywuzzy
+python-Levenshtein
