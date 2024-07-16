@@ -85,6 +85,18 @@
             "env": {},
             "cwd": "${workspaceFolder}",
             "justMyCode": true
+        },{
+            "name": "Processor - Special",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/processor/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--special", "${input:processorSpecial}"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
         }
     ],
     "inputs": [
@@ -130,6 +142,12 @@
             "type": "promptString",
             "description": "Enter number of pages to scrape (0 for all)",
             "default": "1"
+        },
+        {
+            "id": "processorSpecial",
+            "type": "promptString",
+            "description": "Enter operation name",
+            "default": ""
         },
         {
             "id": "numItems",

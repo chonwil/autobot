@@ -79,3 +79,11 @@ class Processor:
             result.append_result(self._upload(entities))
             
         return result
+
+
+    def special(self, special):
+        if special == "reprocess_similar_launches":
+            from parsers import PostsParser
+            parser = PostsParser()
+            parser.reprocess_launches()
+        

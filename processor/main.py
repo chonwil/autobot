@@ -74,6 +74,13 @@ def main():
         default=0,
         help="Number of items to process (0 for all available)"
     )
+    parser.add_argument(
+        "-s", "--special",
+        required=False,
+        type=str,
+        default=None,
+        help="Execute a specific function"
+    )
     
     
     args = parser.parse_args()
@@ -95,7 +102,11 @@ def main():
     from lib.processor_result import ProcessorResult
     
     processor = Processor()
-    result = processor.process(actions=args.actions, entities=args.options, num_items=args.num_items)
+    if (args.special is not None):
+        result = processor.special(args.special)
+    else:
+        result = processor.process(actions=args.actions, entities=args.options, num_items=args.num_items)
+
     
     logger.success("Processor finished. {} items processed.", result.items_processed)
     

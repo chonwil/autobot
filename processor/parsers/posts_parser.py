@@ -98,28 +98,28 @@ class PostsParser:
 
             
     def _get_similar_launches(self, soup: BeautifulSoup):
-        similar_launches = []
-        # Find the element that contains the word "COMPETIDORES"
-        competitors_text_element = soup.find(text=lambda text: "COMPETIDORES" in text)
+        # Find the tag containing "COMPETIDORES" or "COMPETIDORES:"
+        competitors_tag = soup.find(lambda tag: tag.name and tag.string and 
+                                    tag.string.strip() in ["COMPETIDORES", "COMPETIDORES:"])
         
-        if competitors_text_element:
-            # Get the parent of the found text element
-            parent_element = competitors_text_element.parent
-            
-            # Iterate through all next siblings of the parent element
-            for sibling in parent_element.find_next_siblings():
-                if isinstance(sibling, Tag):
-                    a_elements = sibling.find_all("a")
-                    # Extract the "href" attribute from each "a" element
-                    for a in a_elements:
-                        href = a.get('href')
-                        if href and "www.autoblog.com.uy" in href:
-                            similar_launches.append({
-                                "url": href,
-                                "name": a.text
+        if not competitors_tag:
+            return []
+        
+        # Find all <a> tags after the competitors tag
+        links = competitors_tag.find_all_next('a')
+        
+        # Filter and extract the relevant links
+        result = []
+        for link in links:
+            url = link.get('href', '')
+            text = link.get_text(strip=True)
+            if 'lanzamiento' in url.lower() and "www.autoblog.com.uy" in url.lower():
+                result.append({
+                                "url": url,
+                                "name": text
                                 })
         
-        return similar_launches
+        return result
 
 
     def _store_sections(self, sections, article_id: int):
@@ -139,3 +139,21 @@ class PostsParser:
                 "full_model_name": launch["name"],
                 "url": launch["url"]
             })
+            
+    def reprocess_launches(self):
+        result = ProcessorResult(action="special", entity="reprocess_similar_launches")
+        db = DBHelper()
+        db.execute_query("TRUNCATE TABLE similar_launches")
+        launches = db.execute_query("""
+                                    SELECT l.id, p.html_content, l.title
+                                    FROM launches l 
+                                    JOIN posts p on l.post_id = p.id""")
+        for launch in launches:
+            soup = BeautifulSoup(launch["html_content"], 'html.parser')
+            similar_launches = self._get_similar_launches(soup)
+            if similar_launches:
+                self._store_similar_launches(similar_launches, launch["id"])
+                logger.info(f"Reprocessed launch: {launch["title"]}")
+                result.items_processed += 1
+            
+        return result
