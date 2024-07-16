@@ -26,13 +26,18 @@ class Processor:
         return results
             
 
-    def _process(self, entities):
-        from processors import SalesProcessor
+    def _process(self, entities, num_items: int = 0):
         results = ProcessorResult(action="process", entity="")
         
         if "sales" in entities:
+            from processors import SalesProcessor
             processor = SalesProcessor()
             results.append_result(processor.process())
+        
+        if "launches" in entities:
+            from processors import LaunchProcessor
+            processor = LaunchProcessor()
+            results.append_result(processor.process(num_launches=num_items))
             
         return results
         
@@ -43,13 +48,13 @@ class Processor:
     def _upload(self, entities):
         pass
 
-    def process(self, actions, entities) -> ProcessorResult:
+    def process(self, actions, entities, num_items: int = 0) -> ProcessorResult:
         result = ProcessorResult(llm_usage=LLMUsage(node_title="Processor"))
         if "parse" in actions:
             result.append_result(self._parse(entities))
             
         if "process" in actions:
-            result.append_result(self._process(entities))
+            result.append_result(self._process(entities, num_items))
             
         if "connect" in actions:
             result.append_result(self._connect(entities))

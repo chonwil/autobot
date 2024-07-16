@@ -68,6 +68,12 @@ def main():
         action="store_true",
         help="Initialize the database by clearing all tables"
     )
+    parser.add_argument(
+        "-n", "--num-items",
+        type=int,
+        default=0,
+        help="Number of items to process (0 for all available)"
+    )
     
     
     args = parser.parse_args()
@@ -89,7 +95,7 @@ def main():
     from lib.processor_result import ProcessorResult
     
     processor = Processor()
-    result = processor.process(actions=args.actions, entities=args.options)
+    result = processor.process(actions=args.actions, entities=args.options, num_items=args.num_items)
     
     logger.success("Processor finished. {} items processed.", result.items_processed)
     

@@ -1,4 +1,3 @@
-import argparse
 from loguru import logger
 from datetime import datetime
 import sys
@@ -14,17 +13,17 @@ sys.path.append(parent_dir)
 def initiate_logs(log_level = "INFO"):
     # Configure loguru
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_name = f"{shared_dir}/logs/{current_time}_processor.log"
+    log_file_name = f"{shared_dir}/logs/{current_time}_model_performance_evaluator.log"
     logger.remove()  # Remove default handler
     logger.add(sys.stderr, level=log_level)
     logger.add(log_file_name, rotation="10 MB", level=log_level)
 
 import json
 import csv
-from typing import Dict, List, Any
+from typing import Dict, Any
 from pathlib import Path
 from loguru import logger
-from processors import LaunchProcessor, Car, Cars
+from processors import LaunchProcessor, Car
 
 class ModelPerformanceTester:
     def __init__(self):
@@ -36,9 +35,10 @@ class ModelPerformanceTester:
             {"company": "anthropic", "model": "claude-3-5-sonnet-20240620"},
         ]
         self.launch_ids = [1]
-        self.results_dir = Path("shared/data/evaluations/launch_processor/model_test_results")
-        self.correct_dir = Path("shared/data/evaluations/launch_processor/correct_results")
-        self.detailed_results_dir = Path("shared/data/evaluations/launch_processor/detailed_results")
+        base_path = Path(Path(__file__).parent.parent, 'shared', 'data', 'evaluations', 'launch_processor')
+        self.results_dir = Path(base_path, "model_test_results")
+        self.correct_dir = Path(base_path, "correct_results")
+        self.detailed_results_dir = Path(base_path, "detailed_results")
         self._ensure_directories()
 
     def _ensure_directories(self):

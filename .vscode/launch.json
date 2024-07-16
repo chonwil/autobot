@@ -45,6 +45,7 @@
             "args": [
                 "-a", "${input:processorActions}",
                 "-o", "${input:processorOptions}",
+                "-n", "${input:numItems}",
                 "--log-level", "INFO"
             ],
             "env": {},
@@ -79,7 +80,7 @@
             "name": "Processor - TEST LAUNCH MODELS",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/processor/model_performance_tester.py",
+            "program": "${workspaceFolder}/processor/model_performance_evaluator.py",
             "console": "integratedTerminal",
             "env": {},
             "cwd": "${workspaceFolder}",
@@ -129,6 +130,12 @@
             "type": "promptString",
             "description": "Enter number of pages to scrape (0 for all)",
             "default": "1"
+        },
+        {
+            "id": "numItems",
+            "type": "promptString",
+            "description": "Enter number of items to process (0 for all)",
+            "default": "0"
         }
     ]
 }

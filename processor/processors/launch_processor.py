@@ -1,3 +1,5 @@
+import concurrent.futures
+import threading
 from typing import Dict, Any, List, Optional
 from langchain.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
@@ -76,8 +78,8 @@ class Cars(BaseModel):
     """Identifying information about all cars in a text."""
     cars: List[Car]
     
-DEFAULT_COMPANY = "groq"
-DEFAULT_MODEL = "llama3-8b-8192"
+DEFAULT_COMPANY = "openai"
+DEFAULT_MODEL = "gpt-3.5-turbo"
 
 class LLM:
     def __init__(self, model: str, company: str, temperature: str = "0", llm = None):
@@ -85,12 +87,14 @@ class LLM:
         self.company = company
         self.temperature = temperature
         self.llm = llm
+        self.lock = threading.Lock()
 
 class LaunchProcessor:
-    def __init__(self):
+    def __init__(self, max_workers=4):
         self.db = DBHelper()
         self.parser = PydanticOutputParser(pydantic_object=Cars)
         self.llms = []
+        self.max_workers = max_workers
 
     def get_llm(self, company_name: str = DEFAULT_COMPANY, model_name: str = DEFAULT_MODEL, temperature: str = "0", max_retries=2) -> BaseLanguageModel:
         for llm in self.llms:
@@ -112,48 +116,73 @@ class LaunchProcessor:
         self.llms.append(LLM(model=model_name, company=company_name, temperature=temperature, llm=llm))
         return llm
 
-    def process(self, company_name: str = DEFAULT_COMPANY, model_name: str = DEFAULT_MODEL) -> ProcessorResult:
+    def process(self, company_name: str = DEFAULT_COMPANY, model_name: str = DEFAULT_MODEL, num_launches: int = 0) -> ProcessorResult:
         result = ProcessorResult(action="process", entity="launches")
         llm = self.get_llm(company_name, model_name)
-        launches = self._get_unprocessed_launches()
+        launches = self._get_unprocessed_launches(num_launches)
         
-        for launch in launches:
-            try:
-                car_attributes = self._extract_car_attributes(launch['content'], llm)
-                self._save_car_attributes(launch['id'], car_attributes)
-                self._mark_launch_as_processed(launch['id'])
-                result.items_processed += 1
-            except Exception as e:
-                logger.error(f"Error processing launch {launch['id']}: {str(e)}")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [executor.submit(self._process_launch, launch, llm) for launch in launches]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    processed = future.result()
+                    if processed:
+                        with self.lock:
+                            result.items_processed += 1
+                except Exception as e:
+                    logger.error(f"Error processing launch: {str(e)}")
         
         return result
+
+    def _process_launch(self, launch: Dict[str, Any], llm: BaseLanguageModel) -> bool:
+        try:
+            car_attributes = self._extract_car_attributes(launch['content'], llm)
+            if car_attributes.cars:
+                for car in car_attributes.cars:
+                    self._save_car_attributes(launch['id'], car.dict())
+            self._mark_launch_as_processed(launch['id'])
+            return True
+        except Exception as e:
+            logger.error(f"Error processing launch {launch['id']}: {str(e)}")
+            return False
 
     def test_process(self, launch_ids: List[int], model_name: str, company_name: str) -> Dict[int, Dict[str, Any]]:
         logger.info(f"\nModel {company_name} - {model_name} with launches {launch_ids}\n====================")
         llm = self.get_llm(company_name, model_name)
         results = {}
         
-        for launch_id in launch_ids:
-            launch = self._get_launch_by_id(launch_id)
-            if launch:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {executor.submit(self._test_process_launch, launch_id, llm): launch_id for launch_id in launch_ids}
+            for future in concurrent.futures.as_completed(futures):
+                launch_id = futures[future]
                 try:
-                    logger.info(f"Processing launch {launch_id}...")
-                    car_attributes = self._extract_car_attributes(launch['content'], llm)
-                    results[launch_id] = car_attributes.dict()
+                    results[launch_id] = future.result()
                 except Exception as e:
                     logger.error(f"Error processing launch {launch_id}: {str(e)}")
                     results[launch_id] = {"error": str(e)}
-            else:
-                results[launch_id] = {"error": "Launch not found"}
         
         return results
 
-    def _get_unprocessed_launches(self) -> List[Dict[str, Any]]:
-        return self.db.execute_query("""
+    def _test_process_launch(self, launch_id: int, llm: BaseLanguageModel) -> Dict[str, Any]:
+        launch = self._get_launch_by_id(launch_id)
+        if launch:
+            logger.info(f"Processing launch {launch_id}...")
+            car_attributes = self._extract_car_attributes(launch['content'], llm)
+            return car_attributes.dict()
+        else:
+            return {"error": "Launch not found"}
+
+    def _get_unprocessed_launches(self, limit: int = 0) -> List[Dict[str, Any]]:
+        query = """
             SELECT id, content
             FROM launches
             WHERE date_processed IS NULL
-        """)
+            ORDER BY id ASC
+        """
+        if limit > 0:
+            query += f" LIMIT {limit}"
+        
+        return self.db.execute_query(query)
 
     def _get_launch_by_id(self, launch_id: int) -> Dict[str, Any]:
         launches = self.db.execute_query("""
@@ -173,11 +202,8 @@ class LaunchProcessor:
             ]
         )
         
-        instructions = self.parser.get_format_instructions()
-        
         chain = prompt_template | llm | self.parser
-        
-        output = chain.invoke({"content":content, "format_instructions":instructions})
+        output = chain.invoke({"content":content, "format_instructions": self.parser.get_format_instructions()})
         return output
 
     def _save_car_attributes(self, launch_id: int, attributes: Dict[str, Any]):
