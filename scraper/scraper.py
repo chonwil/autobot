@@ -147,12 +147,13 @@ class Scraper:
                     date_line = date_script.string.strip()
                     date_str = date_line.split('=')[1].strip().strip("';")
                     date_obj = datetime.strptime(date_str, '%A, %d de %B de %Y')
-                    extracted_data.append({
-                        'title': title,
-                        'url': url,
-                        'image_url': image_url,
-                        'date': date_obj
-                    })
+                
+                extracted_data.append({
+                    'title': title,
+                    'url': url,
+                    'image_url': image_url,
+                    'date': date_obj
+                })
 
         return extracted_data
 
