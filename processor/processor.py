@@ -1,5 +1,6 @@
 from shared.lib.llm_usage import LLMUsage
 from lib.processor_result import ProcessorResult
+from loguru import logger
     
 class Processor:
     
@@ -37,7 +38,9 @@ class Processor:
         if "launches" in entities:
             from processors import LaunchProcessor
             processor = LaunchProcessor()
-            results.append_result(processor.process(num_launches=num_items))
+            processor_result = processor.process(num_launches=num_items)
+            logger.info(processor_result.llm_usage.print_summary_per_model())
+            results.append_result(processor_result)
             
         return results
         

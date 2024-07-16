@@ -21,13 +21,21 @@ class LLMUsage:
                 return (self.token_input, self.token_output, self.cost, self.time, 1)
             return (0, 0, 0.0, 0.0, 0)
         
-        return sum((u.summarize(model_name, action) for u in self.usage), (0, 0, 0.0, 0.0, 0))
+        total_input, total_output, total_cost, total_time, total_calls = (0, 0, 0.0, 0.0, 0)
+        for u in self.usage:
+            input, output, cost, time, calls = u.summarize(model_name, action)
+            total_input += input
+            total_output += output
+            total_cost += cost
+            total_time += time
+            total_calls += calls
+        return (total_input, total_output, total_cost, total_time, total_calls)
 
     def get_summary(self, model_name: Optional[str] = None, action: Optional[str] = None, print_model: bool = True, print_action: bool = True) -> str:
         token_input, token_output, cost, time, count_calls = self.summarize(model_name, action)
         model_str = f"Model: {model_name}, " if model_name and print_model else ""
         action_str = f"Action: {action}, " if action and print_action else ""
-        return f"{model_str}{action_str}Token input: {token_input}, Token output: {token_output}, Cost: {cost:.2f}, Time: {time:.2f}, Calls: {count_calls}"
+        return f"{model_str}{action_str}Token input: {token_input}, Token output: {token_output}, Cost: ${cost:.3f}, Time: {time:.2f}s, Calls: {count_calls}"
 
     def get_distinct_models(self) -> Set[str]:
         if not self.usage:
@@ -52,5 +60,5 @@ class LLMUsage:
             for action in self.get_distinct_actions():
                 result.append(self.get_summary(model_name=model, action=action, print_model=False))
             token_input, token_output, cost, time, count_calls = self.summarize(model_name=model)
-            result.append(f"TOTAL: Token input: {token_input}, Token output: {token_output}, Cost: {cost:.2f}, Time: {time:.2f}, Calls: {count_calls}")
+            result.append(f"TOTAL: Token input: {token_input}, Token output: {token_output}, Cost: ${cost:.3f}, Time: {time:.2f}s, Calls: {count_calls}")
         return "\n".join(result)

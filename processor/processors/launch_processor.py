@@ -1,6 +1,8 @@
 import concurrent.futures
+import time
 import threading
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from langchain_community.callbacks.manager import get_openai_callback
 from langchain.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from langchain.pydantic_v1 import BaseModel, Field
@@ -8,6 +10,7 @@ from langchain_core.language_models.base import BaseLanguageModel
 from shared.utils import DBHelper
 from lib.processor_result import ProcessorResult
 from loguru import logger
+from shared.lib.llm_usage import LLMUsage
 
 class Car(BaseModel):
     launch_price: int = Field(description="Launch price of the car in USD")
@@ -87,14 +90,15 @@ class LLM:
         self.company = company
         self.temperature = temperature
         self.llm = llm
-        self.lock = threading.Lock()
 
 class LaunchProcessor:
-    def __init__(self, max_workers=4):
+    def __init__(self, max_workers=1):
         self.db = DBHelper()
         self.parser = PydanticOutputParser(pydantic_object=Cars)
         self.llms = []
         self.max_workers = max_workers
+        self.lock = threading.Lock()
+        self.llm_usage = LLMUsage(node_title="LaunchProcessor")
 
     def get_llm(self, company_name: str = DEFAULT_COMPANY, model_name: str = DEFAULT_MODEL, temperature: str = "0", max_retries=2) -> BaseLanguageModel:
         for llm in self.llms:
@@ -122,29 +126,49 @@ class LaunchProcessor:
         launches = self._get_unprocessed_launches(num_launches)
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [executor.submit(self._process_launch, launch, llm) for launch in launches]
+            futures = [executor.submit(self._process_launch, launch, llm, company_name, model_name) for launch in launches]
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    processed = future.result()
+                    processed, usage = future.result()
                     if processed:
                         with self.lock:
                             result.items_processed += 1
+                            result.llm_usage.add_usage(usage)
                 except Exception as e:
                     logger.error(f"Error processing launch: {str(e)}")
         
         return result
 
-    def _process_launch(self, launch: Dict[str, Any], llm: BaseLanguageModel) -> bool:
+    def _process_launch(self, launch: Dict[str, Any], llm: BaseLanguageModel, company_name: str, model_name: str) -> Tuple[bool, LLMUsage]:
+        usage = LLMUsage(action="extract_launch_attributes", model_name=model_name)
+        start_time = time.time()
+        
         try:
-            car_attributes = self._extract_car_attributes(launch['content'], llm)
+            logger.info(f"Processing launch {launch['id']} - {launch['title']}...")
+            if company_name == "openai":
+                with get_openai_callback() as cb:
+                    car_attributes = self._extract_car_attributes(launch['content'], llm)
+                usage.token_input = cb.prompt_tokens
+                usage.token_output = cb.completion_tokens
+                usage.cost = cb.total_cost
+            else:
+                car_attributes = self._extract_car_attributes(launch['content'], llm)
+                # Estimate token usage and cost for non-OpenAI models
+                usage.token_input, usage.token_output = self._estimate_token_usage(launch['content'], car_attributes)
+                usage.cost = self._estimate_cost(company_name, model_name, usage.token_input, usage.token_output)
+            
             if car_attributes.cars:
                 for car in car_attributes.cars:
                     self._save_car_attributes(launch['id'], car.dict())
             self._mark_launch_as_processed(launch['id'])
-            return True
+            logger.info(f"Launch processed: {launch['id']}")
+            
+            usage.time = time.time() - start_time
+            return True, usage
         except Exception as e:
             logger.error(f"Error processing launch {launch['id']}: {str(e)}")
-            return False
+            usage.time = time.time() - start_time
+            return False, usage
 
     def test_process(self, launch_ids: List[int], model_name: str, company_name: str) -> Dict[int, Dict[str, Any]]:
         logger.info(f"\nModel {company_name} - {model_name} with launches {launch_ids}\n====================")
@@ -174,7 +198,7 @@ class LaunchProcessor:
 
     def _get_unprocessed_launches(self, limit: int = 0) -> List[Dict[str, Any]]:
         query = """
-            SELECT id, content
+            SELECT id, title, content
             FROM launches
             WHERE date_processed IS NULL
             ORDER BY id ASC
@@ -186,7 +210,7 @@ class LaunchProcessor:
 
     def _get_launch_by_id(self, launch_id: int) -> Dict[str, Any]:
         launches = self.db.execute_query("""
-            SELECT id, content
+            SELECT id, title, content
             FROM launches
             WHERE id = %s
         """, (launch_id,))
@@ -212,3 +236,22 @@ class LaunchProcessor:
 
     def _mark_launch_as_processed(self, launch_id: int):
         self.db.update('launches', {'id': launch_id}, {'date_processed': 'NOW()'})
+
+    def _estimate_token_usage(self, input_text: str, output: Cars) -> Tuple[int, int]:
+        # Implement token estimation logic here for non-OpenAI models
+        # This is a placeholder implementation
+        input_tokens = len(input_text.split())
+        output_tokens = sum(len(str(car).split()) for car in output.cars)
+        return input_tokens, output_tokens
+
+    def _estimate_cost(self, company_name: str, model_name: str, token_input: int, token_output: int) -> float:
+        # Implement cost estimation logic here for non-OpenAI models
+        # This is a placeholder implementation
+        if company_name == "groq":
+            # Add Groq pricing logic
+            pass
+        elif company_name == "anthropic":
+            # Add Anthropic pricing logic
+            pass
+        # Add more pricing logic for other models/companies
+        return 0.0
