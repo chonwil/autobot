@@ -64,7 +64,6 @@ class Processor:
             connector = PricesConnector()
             results.append_result(connector.connect())
             
-        
         if "articles" in entities:
             from connectors import ArticlesConnector
             connector = ArticlesConnector()
@@ -72,8 +71,16 @@ class Processor:
         
         return results
     
-    def _upload(self, entities):
-        pass
+    def _upload(self, entities, num_items: int = 0):
+        results = ProcessorResult(action="upload", entity="")
+        
+        if "articles" in entities:
+            from uploaders import ArticleSectionUploader
+            uploader = ArticleSectionUploader()
+            result = uploader.prepare(num_items)
+            results.append_result(result)
+            
+        return results
 
     def process(self, actions, entities, num_items: int = 0) -> ProcessorResult:
         result = ProcessorResult(llm_usage=LLMUsage(node_title="Processor"))
@@ -87,7 +94,7 @@ class Processor:
             result.append_result(self._connect(entities))
             
         if "upload" in actions:
-            result.append_result(self._upload(entities))
+            result.append_result(self._upload(entities, num_items))
             
         return result
 
