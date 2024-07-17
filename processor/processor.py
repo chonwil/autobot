@@ -58,6 +58,11 @@ class Processor:
             from connectors import LaunchesConnector
             connector = LaunchesConnector()
             results.append_result(connector.connect())
+            
+        if "prices" in entities:
+            from connectors import PricesConnector
+            connector = PricesConnector()
+            results.append_result(connector.connect())
         
         return results
     
