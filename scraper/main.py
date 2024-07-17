@@ -46,6 +46,13 @@ def main():
         action="store_true",
         help="Download images after scraping"
     )
+    parser.add_argument(
+        "-s", "--special",
+        required=False,
+        type=str,
+        default=None,
+        help="Scrape from a list of urls"
+    )
     
     args = parser.parse_args()
     
@@ -55,9 +62,11 @@ def main():
     logger.info(f"Starting scraper with options: {args.options}, numpages: {args.numpages}")
     
     scraper = Scraper()
-    pages_scraped = scraper.scrape(scrape_options=args.options, numpages=args.numpages)
-    
-    logger.info(f"Scraping complete. Total pages scraped: {pages_scraped}")
+    if (args.special):
+        scraper.scrape_from_file(args.special)
+    else:
+        pages_scraped = scraper.scrape(scrape_options=args.options, numpages=args.numpages)
+        logger.info(f"Scraping complete. Total pages scraped: {pages_scraped}")
 
     if args.download_images:
         logger.info("Downloading images...")

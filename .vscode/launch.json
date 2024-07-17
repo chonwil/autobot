@@ -37,6 +37,18 @@
             "cwd": "${workspaceFolder}",
             "justMyCode": true
         },{
+            "name": "Scraper - Special",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scraper/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--special", "${input:scraperSpecial}"
+            ],
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
+        },{
             "name": "Processor (Interactive)",
             "type": "debugpy",
             "request": "launch",
@@ -147,6 +159,12 @@
             "id": "processorSpecial",
             "type": "promptString",
             "description": "Enter operation name",
+            "default": ""
+        },
+        {
+            "id": "scraperSpecial",
+            "type": "promptString",
+            "description": "Enter type",
             "default": ""
         },
         {

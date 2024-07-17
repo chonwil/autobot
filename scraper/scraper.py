@@ -1,5 +1,6 @@
 import locale
 from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 import os
 import requests
@@ -186,6 +187,28 @@ class Scraper:
             logger.exception(f"An error occurred while scraping comments: {e}")
 
         return comments_html
+    
+    
+                
+    def scrape_from_file(self, type: str):
+        file_path = Path(Path(__file__).parent, "tmp", f"{type}.txt")
+
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return False
+
+        urls = []
+        with open(file_path, 'r') as file:
+            urls = [line.strip() for line in file if line.strip()]
+        
+        for url in urls:
+            try:
+                self.scrape_post(url, type)
+                logger.info(f"Scraped and saved post from URL: {url}")
+            except Exception as e:
+                logger.error(f"Error scraping URL {url}: {str(e)}")
+
+        return True
 
     @staticmethod
     def is_valid_for_type(post: Dict, post_type: str) -> bool:
