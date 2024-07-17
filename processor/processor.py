@@ -78,6 +78,7 @@ class Processor:
             from uploaders import ArticleSectionUploader
             uploader = ArticleSectionUploader()
             result = uploader.prepare(num_items)
+            result.append_result(uploader.upload())
             results.append_result(result)
             
         return results

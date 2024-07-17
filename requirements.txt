@@ -21,3 +21,4 @@ fuzzywuzzy
 python-Levenshtein
 scipy
 numpy
+pinecone-client
