@@ -109,6 +109,15 @@
             "env": {},
             "cwd": "${workspaceFolder}",
             "justMyCode": true
+        },{
+            "name": "CHATBOT",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/chatbot/main_chatbot.py",
+            "console": "integratedTerminal",
+            "env": {},
+            "cwd": "${workspaceFolder}",
+            "justMyCode": true
         }
     ],
     "inputs": [

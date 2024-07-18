@@ -22,3 +22,8 @@ python-Levenshtein
 scipy
 numpy
 pinecone-client
+
+# Chatbot dependencies
+langsmith
+gradio
+langchain_pinecone
