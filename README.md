@@ -6,6 +6,10 @@ Autobot has data processing pipeline designed to scrape, parse, analyze, and str
 
 Once the data has been analyzed and structured, the chatbot application can be used to interact with the data.
 
+### Requirements
+
+An OpenAI account and API KEY is required to run the project, along with an account in Pinecone, an index and an API key. Note that as of July 2024, using the OpenAI models to extract, structure and upload the necessary data may cost between $5 - $10 approximately for a full run.
+
 
 ## Features
 
