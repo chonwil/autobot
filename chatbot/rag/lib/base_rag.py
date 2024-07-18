@@ -10,6 +10,8 @@ from langchain_core.messages import HumanMessage, AIMessage
 from langsmith import traceable
 
 class BaseRAG(ABC):
+    MAX_HISTORY_LENGTH = 5
+    
     def __init__(self):
         self.name: str = self.__class__.__name__
         self.description: str = "Base RAG implementation"
@@ -49,11 +51,12 @@ class BaseRAG(ABC):
         return processed_response
 
     @traceable(name="greet")
-    def greet(self, user_name: str) -> str:
+    def greet(self, user_name: str, greeting: str = None) -> str:
         """
         Generate a greeting message for the user.
         """
-        greeting = f"Hola {user_name}! Soy {self.name}. En que te puedo ayudar?"
+        if not greeting:
+            greeting = f"Hola {user_name}! Soy {self.name}. En que te puedo ayudar?"
         self.conversation_history.append(AIMessage(content=greeting))
         return greeting
 
@@ -126,3 +129,10 @@ Please provide a concise and accurate answer, in Spanish, based on the given con
         Process the raw LLM response. Can be overridden by subclasses if needed.
         """
         return response.strip()
+    
+    def _format_history(self) -> str:
+        formatted = []
+        for msg in self.conversation_history[-self.MAX_HISTORY_LENGTH:]:
+            role = "Usuario" if isinstance(msg, HumanMessage) else "AI"
+            formatted.append(f"{role}: {msg.content}")
+        return "\n".join(formatted)
