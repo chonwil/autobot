@@ -14,7 +14,7 @@
             "name": "Scraper (Interactive)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scraper/main.py",
+            "program": "${workspaceFolder}/scraper/main_scraper.py",
             "console": "integratedTerminal",
             "args": [
                 "-o", "${input:scraperOptions}",
@@ -28,7 +28,7 @@
             "name": "Scraper - ALL",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scraper/main.py",
+            "program": "${workspaceFolder}/scraper/main_scraper.py",
             "console": "integratedTerminal",
             "args": [
                 "--log-level", "INFO"
@@ -40,7 +40,7 @@
             "name": "Scraper - Special",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/scraper/main.py",
+            "program": "${workspaceFolder}/scraper/main_scraper.py",
             "console": "integratedTerminal",
             "args": [
                 "--special", "${input:scraperSpecial}"
@@ -52,7 +52,7 @@
             "name": "Processor (Interactive)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/processor/main.py",
+            "program": "${workspaceFolder}/processor/main_processor.py",
             "console": "integratedTerminal",
             "args": [
                 "-a", "${input:processorActions}",
@@ -67,7 +67,7 @@
             "name": "Processor - Full action (Interactive)",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/processor/main.py",
+            "program": "${workspaceFolder}/processor/main_processor.py",
             "console": "integratedTerminal",
             "args": [
                 "-a", "${input:processorActions}",
@@ -80,7 +80,7 @@
             "name": "Processor - INIT DB",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/processor/main.py",
+            "program": "${workspaceFolder}/processor/main_processor.py",
             "console": "integratedTerminal",
             "args": [
                 "--init-db"
@@ -101,7 +101,7 @@
             "name": "Processor - Special",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/processor/main.py",
+            "program": "${workspaceFolder}/processor/main_processor.py",
             "console": "integratedTerminal",
             "args": [
                 "--special", "${input:processorSpecial}"
