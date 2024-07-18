@@ -80,6 +80,13 @@ class Processor:
             result = uploader.prepare(num_items)
             result.append_result(uploader.upload())
             results.append_result(result)
+    
+        if "launches" in entities:
+            from uploaders import LaunchUploader
+            uploader = LaunchUploader()
+            result = uploader.prepare(num_items)
+            result.append_result(uploader.upload())
+            results.append_result(result)
             
         return results
 

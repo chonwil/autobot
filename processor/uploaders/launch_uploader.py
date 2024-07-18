@@ -11,7 +11,158 @@ from shared.utils import DBHelper
 from loguru import logger
 from concurrent.futures import ThreadPoolExecutor
 from pinecone import Pinecone
-            
+
+class LaunchUploader:
+    def __init__(self, company: str = "openai", model_name: str = "text-embedding-3-small", dimensions: int = 1536):
+        self.company = company
+        self.model_name = model_name
+        self.dimensions = dimensions
+        self.db = DBHelper()
+        self.embeddings = OpenAIEmbeddings(model=model_name)
+        self.output_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'shared', 'tmp', 'processed_embeddings')
+        self.uploaded_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'shared', 'tmp', 'uploaded_embeddings')
+        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(self.uploaded_dir, exist_ok=True)
+        self.results = None
+        self.work_queue = queue.Queue()
+
+    def prepare(self, limit: Optional[int] = None, num_threads: int = 20) -> ProcessorResult:
+        self.results = ProcessorResult(action="upload-prepare", entity="launches")
+        launches = self._get_launches(limit)
+        
+        for launch in launches:
+            self.work_queue.put(launch)
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            for _ in range(num_threads):
+                executor.submit(self._worker)
+
+        logger.info(f"Prepare complete. {self.results.items_processed} launches processed.")
+        return self.results
+
+    def _worker(self):
+        while True:
+            try:
+                launch = self.work_queue.get_nowait()
+                self._process_launch(launch)
+                self.work_queue.task_done()
+            except queue.Empty:
+                break
+
+    def _get_launches(self, limit: Optional[int]) -> List[Dict[str, Any]]:
+        query = """
+            SELECT l.id as launch_id, l.title as launch_title, p.url as launch_url, l.content as launch_content
+            FROM launches l
+            JOIN posts p ON l.post_id = p.id
+        """
+        if limit:
+            query += f" LIMIT {limit}"
+        return self.db.execute_query(query)
+
+    def _process_launch(self, launch: Dict[str, Any]):
+        output_file = os.path.join(self.output_dir, f"launch_{launch['launch_id']}_embeddings.json")
+        
+        if os.path.exists(output_file):
+            logger.info(f"Embeddings for launch {launch['launch_id']} already exist. Skipping.")
+            return
+
+        chunks = self._generate_chunks(launch['launch_content'])
+        embeddings = self._generate_embeddings(chunks)
+
+        metadata = {
+            "launch_title": launch['launch_title'],
+            "launch_url": launch['launch_url']
+        }
+
+        launch_embeddings = [
+            AutobotEmbedding(
+                chunk=chunk,
+                embedding=embedding,
+                metadata=metadata,
+                company=self.company,
+                model_name=self.model_name,
+                dimensions=self.dimensions
+            ).to_dict()
+            for chunk, embedding in zip(chunks, embeddings)
+        ]
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(launch_embeddings, f, ensure_ascii=False, indent=2)
+
+        logger.info(f"Embeddings for launch {launch['launch_id']} saved to {output_file}")
+        self.results.items_processed += 1
+
+    def _generate_chunks(self, text: str) -> List[str]:
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=4000,
+            chunk_overlap=400,
+            length_function=len,
+        )
+        return text_splitter.split_text(text)
+
+    def _generate_embeddings(self, chunks: List[str]) -> List[List[float]]:
+        return self.embeddings.embed_documents(chunks)
+    
+    def upload(self, index_name: str = "") -> ProcessorResult:
+        result = ProcessorResult(action="upload", entity="launches")
+        
+        pc = Pinecone()
+        if index_name == "":
+            index_name = os.getenv("PINECONE_INDEX")
+        index = pc.Index(index_name)
+
+        embeddings_to_upload = self._read_filtered_embeddings()
+        
+        logger.info(f"Total launch embeddings to upload: {len(embeddings_to_upload)}")
+
+        batch_size = 100
+        for i in range(0, len(embeddings_to_upload), batch_size):
+            batch = embeddings_to_upload[i:i+batch_size]
+            self._upsert_batch(index, batch)
+            result.items_processed += len(batch)
+            logger.info(f"Uploaded {result.items_processed} launch embeddings so far...")
+
+        self._move_processed_files()
+
+        logger.info(f"Upload complete. {result.items_processed} launch embeddings uploaded.")
+        return result
+
+    def _read_filtered_embeddings(self) -> List[AutobotEmbedding]:
+        embeddings = []
+        for filename in os.listdir(self.output_dir):
+            if filename.endswith("_embeddings.json"):
+                file_path = os.path.join(self.output_dir, filename)
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    file_embeddings = json.load(f)
+                    filtered_embeddings = [
+                        AutobotEmbedding.from_dict(e) for e in file_embeddings
+                        if e['company'] == self.company and e['model_name'] == self.model_name and e['dimensions'] == self.dimensions
+                    ]
+                    embeddings.extend(filtered_embeddings)
+        return embeddings
+
+    def _upsert_batch(self, index, batch: List[AutobotEmbedding]):
+        vectors = [
+            (
+                str(hash(e.chunk)),  # Use a hash of the chunk as the ID
+                e.embedding,
+                {
+                    "chunk": e.chunk,
+                    "launch_title": e.metadata["launch_title"],
+                    "launch_url": e.metadata["launch_url"]
+                }
+            ) for e in batch
+        ]
+        index.upsert(vectors=vectors)
+
+    def _move_processed_files(self):
+        for filename in os.listdir(self.output_dir):
+            if "launch" in filename and filename.endswith("_embeddings.json"):
+                src = os.path.join(self.output_dir, filename)
+                dst = os.path.join(self.uploaded_dir, filename)
+                os.rename(src, dst)
+                logger.info(f"Moved {filename} to uploaded_embeddings directory")
+                
 class ArticleSectionUploader:
     def __init__(self, company: str = "openai", model_name: str = "text-embedding-3-small", dimensions: int = 1536):
         self.company = company

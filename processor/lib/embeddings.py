@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 from dataclasses import dataclass, asdict
 
 @dataclass
-class ArticleSectionEmbedding:
+class AutobotEmbedding:
     chunk: str
     embedding: List[float]
     metadata: Dict[str, Any]

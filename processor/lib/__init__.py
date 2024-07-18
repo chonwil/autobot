@@ -1,2 +1,2 @@
-from .embeddings import ArticleSectionEmbedding
+from .embeddings import AutobotEmbedding
 from .processor_result import ProcessorResult
