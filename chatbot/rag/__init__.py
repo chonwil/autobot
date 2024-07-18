@@ -1,4 +1,4 @@
-from .base_rag import BaseRAG
+from .lib.base_rag import BaseRAG
 from .simple_rag import SimpleRAG
 
 

@@ -7,8 +7,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain.chains import LLMChain
-import os
 from langsmith import traceable
 
 class BaseRAG(ABC):
@@ -20,7 +18,7 @@ class BaseRAG(ABC):
         self.logs: List[str] = []
         
         # Initialize LangChain components
-        self.llm = ChatOpenAI(temperature=0)
+        self.llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo')
         self.output_parser = StrOutputParser()
 
     @abstractmethod
@@ -96,12 +94,12 @@ class BaseRAG(ABC):
         self.usage = LLMUsage(node_title=self.name)
         self.logs = []
 
-    def _log(self, message: str):
+    def _log(self, message: str, level: str = "INFO"):
         """
         Add a log message and print it.
         """
         self.logs.append(message)
-        logger.info(message)
+        logger.log(level, message)
 
     def _update_usage(self, new_usage: LLMUsage):
         """
