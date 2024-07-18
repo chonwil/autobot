@@ -1,4 +1,4 @@
-# Autobot: Automotive RAG application
+# 🚗🤖 Autobot: An automotive RAG application 
 
 Autobot is a RAG (Retrieval Augmented Generation) appliaction used to obtain insights about cars and the Uruguayan car market. I built autobot as a personal learning project, as it can be used to test multiple approaches to data processing, extraction and interaction using generative AI techniques.
 
@@ -94,4 +94,4 @@ Options:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [License.txt](License.txt) file for details.
