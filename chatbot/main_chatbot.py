@@ -1,6 +1,5 @@
 import os
 import sys
-# Add the shared directory to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 shared_dir = os.path.join(parent_dir, "shared")
@@ -12,45 +11,63 @@ from typing import List
 from rag import BaseRAG, RAG_MODELS
 from loguru import logger
 
-
-def initiate_logs(log_level = "INFO"):
-    # Configure loguru
+def initiate_logs(log_level="INFO"):
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file_name = f"{shared_dir}/logs/{current_time}_chatbot.log"
-    logger.remove()  # Remove default handler
+    logger.remove()
     logger.add(sys.stderr, level=log_level)
     logger.add(log_file_name, rotation="10 MB", level=log_level)
-    
 
 # Global variables
 rag_models = RAG_MODELS
 current_rag: BaseRAG = None
 
-# Helper functions
+SUGGESTED_QUESTIONS = [
+    "¿Cuál es la capital de Francia?",
+    "¿Cuál es el alcance de la Hyundai Kona Electric?",
+    "¿Cuáles son las ventajas de la Nissan Kicks comparada con la Changan CS35?",
+    "¿Cuántos airbags tiene la Nissan Kicks?"
+]
+
 def format_message(role: str, content: str) -> str:
-    return f"<div class='{role}'><strong>{role.capitalize()}:</strong> {content}</div>"
+    align = "right" if role == "human" else "left"
+    return f"""
+    <div class="message {role}" style="display: flex; justify-content: {align};">
+        <div style="background-color: #e6f3ff; 
+                    color: black;
+                    border-radius: 10px; 
+                    padding: 10px; 
+                    margin: 5px; 
+                    max-width: 70%;">
+            {content}
+        </div>
+    </div>
+    """
 
 def update_metrics(usage):
     return (
-        f"Latest: {usage.token_input} input, {usage.token_output} output tokens, "
+        f"Último: {usage.token_input} tokens de entrada, {usage.token_output} tokens de salida, "
         f"${usage.cost:.4f}, {usage.time:.2f}s\n"
-        f"Total: {usage.summarize()[0]} input, {usage.summarize()[1]} output tokens, "
+        f"Total: {usage.summarize()[0]} tokens de entrada, {usage.summarize()[1]} tokens de salida, "
         f"${usage.summarize()[2]:.4f}, {usage.summarize()[3]:.2f}s"
     )
 
-# Gradio component update functions
-def greet(name: str, model_name: str) -> List:
+def chat(message: str, history: List[List[str]]) -> List:
+    response = current_rag.chat(message)
+    history.append([message, response])
+    return history, current_rag.get_logs(), update_metrics(current_rag.get_usage())
+
+def start_conversation(name: str, model_name: str) -> List:
     global current_rag
     current_rag = next(model for model in rag_models if model.__name__ == model_name)()
     greeting = current_rag.greet(name)
-    chat_history = [format_message("assistant", greeting)]
-    return [chat_history, current_rag.get_logs(), update_metrics(current_rag.get_usage()), gr.update(visible=True), gr.update(visible=True)]
-
-def chat(message: str, history: List[str]) -> List:
-    response = current_rag.chat(message)
-    history.append(format_message("human", message))
-    history.append(format_message("assistant", response))
-    return [history, current_rag.get_logs(), update_metrics(current_rag.get_usage())]
+    return [
+        [[None, greeting]], 
+        current_rag.get_logs(), 
+        update_metrics(current_rag.get_usage()),
+        gr.update(visible=False),  # Hide start screen
+        gr.update(visible=True),   # Show chat interface
+    ]
 
 def clear_conversation() -> List:
     global current_rag
@@ -61,38 +78,51 @@ def restart_conversation() -> List:
     global current_rag
     current_rag = None
     return [
-        gr.update(value="Charlie"), 
-        gr.Dropdown.update(choices=[model.__name__ for model in rag_models], value=None),
-        [], "", "", 
-        gr.update(visible=False), 
-        gr.update(visible=False)
+        gr.update(value=""),  # Clear name input
+        gr.update(value=None),  # Reset model dropdown
+        gr.update(visible=True),  # Show start screen
+        gr.update(visible=False),  # Hide chat interface
+        [], "", ""  # Clear chat history, logs, and metrics
     ]
 
-# Gradio interface
-with gr.Blocks(css="#chatbot {height: 400px; overflow-y: scroll;}") as demo:
-    gr.Markdown("# Autobot RAG Chatbot")
+def use_suggested_question(question: str, history: List[str]) -> List:
+    return chat(question, history)
+
+
+
+with gr.Blocks() as demo:
+    gr.Markdown("# 🚗🤖 Autobot")
     
-    with gr.Row():
-        name_input = gr.Textbox(label="Your Name", value="Charlie")
-        model_dropdown = gr.Dropdown(choices=[model.__name__ for model in rag_models], label="Select RAG Model")
-    
-    start_button = gr.Button("Start Conversation")
+    with gr.Column(visible=True) as start_screen:
+        name_input = gr.Textbox(label="Tu Nombre", placeholder="Escribe tu nombre aquí...", value="Charlie")
+        model_dropdown = gr.Dropdown(choices=[model.__name__ for model in rag_models], label="Selecciona el Modelo RAG")
+        start_button = gr.Button("Comenzar")
 
-    chatbot = gr.HTML(elem_id="chatbot")
-    msg_input = gr.Textbox(label="Message", placeholder="Type your message here...")
-    send_button = gr.Button("Send", visible=False)
+    with gr.Column(visible=False) as chat_interface:
+        with gr.Row():
+            with gr.Column(scale=2):
+                chatbot = gr.Chatbot(elem_id="chatbot", height=400)
+                msg_input = gr.Textbox(label="Mensaje", placeholder="Escribe tu mensaje aquí...")
+                send_button = gr.Button("Enviar")
+                
+                gr.Examples(
+                    examples=SUGGESTED_QUESTIONS,
+                    inputs=msg_input,
+                    label="Preguntas Sugeridas"
+                )
+                
+                with gr.Row():
+                    clear_button = gr.Button("Limpiar")
+                    restart_button = gr.Button("Reiniciar")
+            
+            with gr.Column(scale=1):
+                logs_display = gr.Textbox(label="Registros", lines=15)
+                metrics_display = gr.Textbox(label="Métricas")
 
-    logs_display = gr.Textbox(label="Logs", lines=5)
-    metrics_display = gr.Textbox(label="Metrics")
-
-    clear_button = gr.Button("Clear", visible=False)
-    restart_button = gr.Button("Restart")
-
-    # Event handlers
     start_button.click(
-        greet,
+        start_conversation,
         inputs=[name_input, model_dropdown],
-        outputs=[chatbot, logs_display, metrics_display, send_button, clear_button]
+        outputs=[chatbot, logs_display, metrics_display, start_screen, chat_interface]
     )
 
     send_button.click(
@@ -114,7 +144,7 @@ with gr.Blocks(css="#chatbot {height: 400px; overflow-y: scroll;}") as demo:
 
     restart_button.click(
         restart_conversation,
-        outputs=[name_input, model_dropdown, chatbot, logs_display, metrics_display, send_button, clear_button]
+        outputs=[name_input, model_dropdown, start_screen, chat_interface, chatbot, logs_display, metrics_display]
     )
 
 if __name__ == "__main__":
